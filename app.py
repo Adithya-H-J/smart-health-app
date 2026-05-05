@@ -1,215 +1,181 @@
 import streamlit as st
-from datetime import time
+import sqlite3
+import smtplib
+from email.mime.text import MIMEText
 
-# -----------------------------------
-# PAGE SETTINGS
-# -----------------------------------
-st.set_page_config(
-    page_title="Smart Health Advisory System",
-    page_icon="🏥",
-    layout="wide"
+# ==========================
+# EMAIL SETTINGS
+# ==========================
+
+SENDER_EMAIL = "pavankumarhj17@gmail.com"
+APP_PASSWORD = "hafj awjg liwy zitz"
+
+# ==========================
+# DATABASE
+# ==========================
+
+conn = sqlite3.connect("reminders.db", check_same_thread=False)
+c = conn.cursor()
+
+c.execute("""
+CREATE TABLE IF NOT EXISTS reminders(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+email TEXT,
+medicine TEXT,
+time TEXT
+)
+""")
+
+conn.commit()
+
+# ==========================
+# EMAIL FUNCTION
+# ==========================
+
+def send_email(to_email, medicine):
+    try:
+        msg = MIMEText(f"Reminder to take {medicine}")
+        msg["Subject"] = "Medicine Reminder"
+        msg["From"] = SENDER_EMAIL
+        msg["To"] = to_email
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(SENDER_EMAIL, APP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+
+    except:
+        pass
+
+# ==========================
+# LANGUAGE
+# ==========================
+
+lang = st.sidebar.selectbox(
+    "Choose Language",
+    ["English", "Kannada", "Hindi"]
 )
 
-# -----------------------------------
-# TEMPORARY MEMORY
-# -----------------------------------
-if "reminders" not in st.session_state:
-    st.session_state.reminders = []
+if lang == "English":
+    title = "Smart Health Advisory System"
+    symptom_text = "Enter Symptom"
+    button_text = "Analyze"
+    reminder_text = "Medicine Reminder"
 
-# -----------------------------------
-# STYLE
-# -----------------------------------
-st.markdown("""
-<style>
-.main {
-    background-color:#f7fbff;
-}
-h1,h2,h3 {
-    color:#0d47a1;
-}
-.stButton>button {
-    background:#0d47a1;
-    color:white;
-    border-radius:10px;
-    height:3em;
-    width:100%;
-}
-.card {
-    background:#e3f2fd;
-    padding:20px;
-    border-radius:12px;
-    margin-bottom:15px;
-}
-.footer {
-    text-align:center;
-    color:gray;
-    margin-top:40px;
-}
-</style>
-""", unsafe_allow_html=True)
+elif lang == "Kannada":
+    title = "ಸ್ಮಾರ್ಟ್ ಆರೋಗ್ಯ ಸಲಹಾ ವ್ಯವಸ್ಥೆ"
+    symptom_text = "ಲಕ್ಷಣ ನಮೂದಿಸಿ"
+    button_text = "ಪರಿಶೀಲಿಸಿ"
+    reminder_text = "ಔಷಧಿ ನೆನಪಿಸುವಿಕೆ"
 
-# -----------------------------------
-# LANGUAGE SELECTOR
-# -----------------------------------
-st.sidebar.title("🏥 Navigation")
+else:
+    title = "स्मार्ट हेल्थ सलाह प्रणाली"
+    symptom_text = "लक्षण दर्ज करें"
+    button_text = "जांच करें"
+    reminder_text = "दवा रिमाइंडर"
 
-language = st.sidebar.selectbox(
-    "🌐 Select Language",
-    ["English", "Hindi", "Kannada"]
+# ==========================
+# UI
+# ==========================
+
+st.title(title)
+
+menu = st.sidebar.selectbox(
+    "Menu",
+    ["Home", "Symptom Checker", "Reminder", "Saved Reminders"]
 )
 
-page = st.sidebar.radio(
-    "Go To",
-    ["Home", "Symptom Checker", "Medicine Reminder", "About"]
-)
+# ==========================
+# HOME
+# ==========================
 
-# -----------------------------------
-# HOME PAGE
-# -----------------------------------
-if page == "Home":
+if menu == "Home":
+    st.header("Welcome")
+    st.write("Advanced Health Website")
 
-    if language == "English":
-        st.title("🏥 Smart Health Advisory System")
-        st.subheader("Advanced Health Support Website")
-    elif language == "Hindi":
-        st.title("🏥 स्मार्ट हेल्थ सलाह प्रणाली")
-        st.subheader("उन्नत स्वास्थ्य सहायता वेबसाइट")
-    else:
-        st.title("🏥 ಸ್ಮಾರ್ಟ್ ಆರೋಗ್ಯ ಸಲಹಾ ವ್ಯವಸ್ಥೆ")
-        st.subheader("ಮುನ್ನಡೆದ ಆರೋಗ್ಯ ಸಹಾಯ ವೆಬ್‌ಸೈಟ್")
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric("Users", "100+")
-    col2.metric("Languages", "3")
-    col3.metric("Features", "5")
-
-    st.markdown("""
-    <div class="card">
-    <h3>🤒 Symptom Checker</h3>
-    Check symptoms and get health guidance.
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="card">
-    <h3>⏰ Medicine Reminder</h3>
-    Save temporary reminders easily.
-    </div>
-    """, unsafe_allow_html=True)
-
-# -----------------------------------
+# ==========================
 # SYMPTOM CHECKER
-# -----------------------------------
-elif page == "Symptom Checker":
+# ==========================
 
-    st.title("🤒 Symptom Checker")
+elif menu == "Symptom Checker":
 
-    symptom = st.text_area(
-        "Enter symptoms (example: fever, cough, headache)"
-    )
+    st.header("Symptom Checker")
 
-    if st.button("Analyze Symptoms"):
+    symptom = st.text_input(symptom_text)
+
+    if st.button(button_text):
 
         s = symptom.lower()
 
-        if "chest pain" in s:
-            st.error("⚠ Serious Condition")
-            st.progress(100)
-            st.warning("Seek emergency medical help immediately.")
+        if "fever" in s:
+            st.success("Possible Fever")
+            st.write("Medicine: Paracetamol")
+            st.write("Drink water and rest")
 
-        elif "fever" in s and "cough" in s:
-            st.success("Possible Condition: Flu / Viral Fever")
-            st.progress(70)
-            st.info("Severity: Medium")
-            st.info("Rest, fluids, consult doctor if needed.")
-
-        elif "fever" in s:
-            st.success("Possible Condition: Fever")
-            st.progress(50)
-            st.info("Severity: Mild")
-            st.info("Hydrate and monitor temperature.")
+        elif "cold" in s:
+            st.success("Common Cold")
+            st.write("Medicine: Cetirizine")
 
         elif "cough" in s:
-            st.success("Possible Condition: Cold / Cough")
-            st.progress(40)
-            st.info("Severity: Mild")
-            st.info("Warm water, steam, rest.")
+            st.success("Cough")
+            st.write("Medicine: Cough Syrup")
 
         elif "headache" in s:
-            st.success("Possible Condition: Headache / Stress")
-            st.progress(30)
-            st.info("Severity: Mild")
-            st.info("Sleep and reduce stress.")
+            st.success("Headache")
+            st.write("Medicine: Ibuprofen")
 
-        elif "stomach" in s:
-            st.success("Possible Condition: Digestion Issue")
-            st.progress(45)
-            st.info("Severity: Mild")
-            st.info("Eat light food and hydrate.")
+        elif "stomach pain" in s:
+            st.success("Stomach Pain")
+            st.write("Medicine: Antacid")
+
+        elif "leg pain" in s:
+            st.success("Leg Pain")
+            st.write("Medicine: Pain Relief Gel")
+
+        elif "hand pain" in s:
+            st.success("Hand Pain")
+            st.write("Medicine: Pain Relief Tablet")
+
+        elif "chest pain" in s:
+            st.error("Emergency! Visit hospital immediately.")
 
         else:
-            st.warning("No clear match found.")
-            st.info("Consult doctor for proper advice.")
+            st.warning("Consult doctor")
 
-# -----------------------------------
-# MEDICINE REMINDER
-# -----------------------------------
-elif page == "Medicine Reminder":
+# ==========================
+# REMINDER
+# ==========================
 
-    st.title("⏰ Medicine Reminder")
+elif menu == "Reminder":
 
-    med = st.text_input("Medicine Name")
+    st.header(reminder_text)
 
-    t = st.time_input(
-        "Select Time",
-        value=time(8,0)
-    )
+    email = st.text_input("Email")
+    medicine = st.text_input("Medicine Name")
+    time = st.text_input("Time Example: 08:30 AM")
 
-    if st.button("Add Reminder"):
-
-        st.session_state.reminders.append(
-            {"medicine": med, "time": str(t)}
+    if st.button("Save Reminder"):
+        c.execute(
+            "INSERT INTO reminders(email, medicine, time) VALUES (?, ?, ?)",
+            (email, medicine, time)
         )
+        conn.commit()
 
-        st.success("Reminder Added")
+        send_email(email, medicine)
 
-    st.subheader("📋 Saved Temporary Reminders")
+        st.success("Reminder Saved and Test Email Sent")
 
-    if st.session_state.reminders:
+# ==========================
+# SAVED REMINDERS
+# ==========================
 
-        for item in st.session_state.reminders:
-            st.write(
-                f"💊 {item['medicine']} at {item['time']}"
-            )
+elif menu == "Saved Reminders":
 
-    else:
-        st.write("No reminders added.")
+    st.header("Saved Reminders")
 
-# -----------------------------------
-# ABOUT PAGE
-# -----------------------------------
-elif page == "About":
+    c.execute("SELECT email, medicine, time FROM reminders")
+    rows = c.fetchall()
 
-    st.title("ℹ️ About Project")
-
-    st.write("""
-This advanced project helps users:
-
-- Check symptoms
-- View severity level
-- Get basic guidance
-- Add medicine reminders
-- Use 3 languages
-
-Built using Python + Streamlit.
-""")
-
-# -----------------------------------
-# FOOTER
-# -----------------------------------
-st.markdown("""
-<div class="footer">
-Smart Health Project
-</div>
-""", unsafe_allow_html=True)
+    for row in rows:
+        st.write(f"{row[0]} | {row[1]} | {row[2]}")
